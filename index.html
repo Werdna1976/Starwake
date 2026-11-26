@@ -33,11 +33,15 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 /* HUD */
 .hud{display:flex;align-items:center;gap:6px;padding:8px 12px 6px;font-size:13px;font-weight:600;letter-spacing:.02em;flex:none}
 .hud .sec{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.res{display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.res{display:flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;white-space:nowrap;background:none;border:none;padding:6px 0;font-weight:600;font-size:13px}
+.guide h3{font-size:15px;margin:2px 0 4px;color:var(--ally)}
+.guide p{margin:0 0 10px;font-size:13.5px;color:#cdd5f5;line-height:1.45}
+.guide p:last-child{margin:0}
+.wep,.ew{font-family:inherit;color:inherit;width:100%;text-align:left}
 .res i{width:8px;height:8px;border-radius:2px;display:inline-block}
 .res em{font-style:normal;font-size:9px;letter-spacing:.08em;color:var(--dim);font-weight:600}
 .res.h i{background:var(--good)} .res.f i{background:#e7a24a;border-radius:50%} .res.m i{background:var(--foe);transform:rotate(45deg)} .res.s i{background:var(--gold)}
-.iconbtn{min-width:40px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:13px;padding:0 10px}
+.iconbtn{min-width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:13px;padding:0 8px;flex:none}
 
 /* Generic */
 h1,h2,h3{margin:0;text-wrap:balance}
@@ -202,7 +206,7 @@ const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 
 /* ---------- block zoom gestures on iOS ---------- */
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-document.addEventListener('touchmove',e=>{ if(e.touches.length>1 || !e.target.closest('.shoplist,.overlay .card,.crewlist')) e.preventDefault(); },{passive:false});
+document.addEventListener('touchmove',e=>{ if(e.touches.length>1 || !e.target.closest('.shoplist,.overlay .card,.crewlist,.guide')) e.preventDefault(); },{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 
 /* ---------- data ---------- */
@@ -529,7 +533,8 @@ function makeOffers(rich){
   return out;
 }
 function offerTitle(o){ return o.kind==='weapon'?WEAPONS[o.id].name:o.kind==='perk'?PERKS[o.id].name:o.kind==='crew'?`${o.c.name}, ${TRAITS[o.c.trait].name}`:'Field Repairs'; }
-function offerDesc(o){ return o.kind==='weapon'?`${wdesc(o.id)}. ${TYPE_NOTE[WEAPONS[o.id].type]}`:o.kind==='perk'?PERKS[o.id].desc:o.kind==='crew'?`Lv ${o.c.lv} crew. ${TRAITS[o.c.trait].desc}.`:'Repair 12 hull'; }
+function bayNote(){ return run.weapons.length<4?`Adds to your arsenal (${run.weapons.length}/4 bays used).`:'Bays full: you choose a weapon to replace.'; }
+function offerDesc(o){ return o.kind==='weapon'?`${wdesc(o.id)}. ${TYPE_NOTE[WEAPONS[o.id].type]} ${bayNote()}`:o.kind==='perk'?PERKS[o.id].desc:o.kind==='crew'?`Lv ${o.c.lv} crew. ${TRAITS[o.c.trait].desc}.`:'Repair 12 hull'; }
 function shopDesc(s){ return s.kind==='weapon'?wdesc(s.id):s.kind==='perk'?PERKS[s.id].desc:`Crew Lv ${s.c.lv} · ${TRAITS[s.c.trait].desc}`; }
 function takeOffer(o, next){
   if(o.kind==='perk') givePerk(o.id);
@@ -565,10 +570,10 @@ let lastRun=null;
 function hud(extra=''){
   return `<div class="hud">
     <div class="sec">${run?`S${run.sector} · ${SECTORS[run.sector-1]}`:''}</div>
-    <div class="res h"><em>HULL</em><span>${run.hull}/${run.hullMax}</span></div>
-    <div class="res f"><em>FUEL</em><span>${run.fuel}</span></div>
-    <div class="res m"><em>MSL</em><span>${run.missiles}</span></div>
-    <div class="res s"><em>SCRAP</em><span>${run.scrap}</span></div>
+    <button class="res h" data-act="tip" data-k="h"><em>HULL</em><span>${run.hull}/${run.hullMax}</span></button>
+    <button class="res f" data-act="tip" data-k="f"><em>FUEL</em><span>${run.fuel}</span></button>
+    <button class="res m" data-act="tip" data-k="m"><em>MSL</em><span>${run.missiles}</span></button>
+    <button class="res s" data-act="tip" data-k="s"><em>SCRAP</em><span>${run.scrap}</span></button>
     ${extra}
   </div>`;
 }
@@ -593,6 +598,7 @@ function renderTitle(){
     <div class="stack">
       ${run?`<button class="btn primary" data-act="continue">Continue run · Sector ${run.sector}</button>`:''}
       <button class="btn ${run?'':'primary'}" data-act="new">${run?'Start over':'Launch'}</button>
+      <button class="btn ghost" data-act="guide">How it works</button>
     </div>
     <div class="meta">${meta.runs?`Runs ${meta.runs} · Wins ${meta.wins} · Best: ${meta.best>=4?'flagship destroyed':'sector '+meta.best}`:'Progress saves automatically on this device.'}</div>
   </div>`;
@@ -610,7 +616,7 @@ function renderMap(){
     const cls=['node',n.type, reach?'reach':'', n.id===here.id?'here':(n.seen?'seen':'')].join(' ');
     return `<button class="${cls}" style="left:${W(n)};top:${H(n)}" ${reach?`data-act="jump" data-id="${n.id}"`:'disabled'} aria-label="${LBL[n.type][1]}">${LBL[n.type][0]}<small>${LBL[n.type][1]}</small></button>`;
   }).join('');
-  app.innerHTML=`${hud(`<button class="iconbtn" data-act="crew">Crew</button><button class="iconbtn" data-act="ship">Ship</button>`)}
+  app.innerHTML=`${hud(`<button class="iconbtn" data-act="guide" aria-label="Guide">?</button><button class="iconbtn" data-act="crew">Crew</button><button class="iconbtn" data-act="ship">Ship</button>`)}
   <div class="screen">
     <div class="maphead"><h2 style="font-size:19px">${SECTORS[run.sector-1]}</h2><span class="tag">Jump ${run.jumps} · ${run.fuel?'1 fuel per jump':'no fuel left'}</span></div>
     <div class="mapwrap"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>${nodes}</div>
@@ -701,6 +707,32 @@ function crewOverlay(){
   app.appendChild(div);
   if(sc) div.querySelector('.crewlist').scrollTop=sc;
 }
+function guideOverlay(){
+  const div=document.createElement('div'); div.className='overlay';
+  div.innerHTML=`<div class="shophead"><h2>How it works</h2></div>
+  <div class="card guide" style="flex:1">
+    <h3>Combat runs itself</h3>
+    <p>Every weapon you own charges and fires on its own. You don't aim or manage power. Your job is three choices: which enemy system to target, when to use your abilities, and what to upgrade between fights.</p>
+    <h3>Weapons and bays</h3>
+    <p>You have 4 weapon bays and every installed weapon fires. A new weapon from salvage, a trader, or an event goes into an empty bay. When all 4 are full, you pick one to scrap for it, or keep your loadout and take scrap instead. Tap any weapon bar in a fight to see what it does.</p>
+    <h3>Weapon types</h3>
+    <p><b>Laser:</b> each shot pops one shield layer, so only shots after the shields are gone hit the hull. Multi-shot lasers are great at breaking shields.<br><b>Ion:</b> strips a shield layer and stops shield regen briefly. If shields are already down, it knocks the targeted system offline for a few seconds.<br><b>Missile</b> (◆)<b>:</b> ignores shields completely, but uses ammo.<br><b>Beam:</b> never misses, but loses 1 damage for each enemy shield layer.</p>
+    <h3>Missiles</h3>
+    <p>MSL at the top is your missile count. Only ◆ weapons use them, one per volley. At 0, those weapons wait fully charged and their bar turns red, while everything else keeps firing. Restock from fights, traders, and events.</p>
+    <h3>No power to juggle</h3>
+    <p>Weapons, shields, and engines all run at full strength together. Damage is the only thing that weakens them. Each hull hit also damages the system it was aimed at (the pips under each system). A damaged Weapons system charges slower, damaged Shields hold fewer layers, and damaged Engines dodge less. Systems repair themselves over time, faster with crew on them.</p>
+    <h3>Targeting</h3>
+    <p>Tap Weapons, Shields, or Engines on the enemy to aim there. Hitting their Weapons slows their guns. Hitting Shields lets your lasers through. Hitting Engines makes them easier to hit.</p>
+    <h3>Abilities and timing</h3>
+    <p>The bars under the enemy show each of their weapons charging, and they turn red just before firing. <b>Evade</b> gives about a second of 85% dodge, so tap it when a bar goes red or shots are in the air. <b>Surge</b> refills your shields and adds a bonus layer, which works best right after your shields get knocked down. <b>Overdrive</b> makes your weapons charge almost twice as fast, so use it while their shields are down.</p>
+    <h3>Crew</h3>
+    <p>Assign crew to Weapons, Shields, Engines, or the Bridge from the Crew button on the map. Their level boosts that station, and a crewed system repairs faster. They earn XP from fights, and each one has a trait that always applies.</p>
+    <h3>The map</h3>
+    <p>Each jump costs 1 fuel. Red nodes are fights (Elite means tougher with better loot), blue are signals and events, gold are traders. The gate at the top leads to the next sector. Sector 3 ends with the flagship.</p>
+  </div>
+  <button class="btn primary" data-act="close">Got it</button>`;
+  app.appendChild(div);
+}
 function shipOverlay(inCombat){
   const div=document.createElement('div'); div.className='overlay';
   const perks=Object.entries(run.perks);
@@ -712,7 +744,7 @@ function shipOverlay(inCombat){
      <div class="kv"><span>Evasion</span><b>${Math.round(run.evasion*100)}%</b></div>
      <div class="kv"><span>System health</span><b>${3+perk('hardened')}</b></div>
      </div>
-     <div class="tag">Weapons</div>
+     <div class="tag">Weapons · ${run.weapons.length}/4 bays · all fire on their own</div>
      <div class="list">${run.weapons.map(w=>`<div class="li"><b>${WEAPONS[w].name}</b><span>${wdesc(w)}</span></div>`).join('')}</div>
      <div class="tag">Crew</div>
      <div class="list">${run.crew.map(c=>`<div class="li"><b>${esc(c.name)} · Lv ${c.lv} ${TRAITS[c.trait].name}</b><span>${c.station?STATIONS[c.station]+': '+ST_BONUS[c.station](c.lv):'Bench'}</span></div>`).join('')}</div>
@@ -721,6 +753,7 @@ function shipOverlay(inCombat){
    </div>
    ${inCombat?`<div class="card list" style="flex:none"><div class="li"><b>Evade</b><span>Dodges almost every shot for about a second. Tap it when an enemy weapon bar turns red or shots are in the air.</span></div><div class="li"><b>Surge</b><span>Refills shields and adds a bonus layer. Best right after your shields get knocked down, just before the next volley.</span></div><div class="li"><b>Overdrive</b><span>Weapons charge almost twice as fast. Use it while the enemy's shields are down.</span></div></div>`:''}
    ${inCombat?`<button class="btn primary" data-act="resume">Resume</button>`:`<button class="btn primary" data-act="close">Back to map</button>`}
+   <button class="btn ghost" data-act="guide">Full guide</button>
    <button class="btn ghost" data-act="${inCombat?'abandon':'menu'}">${inCombat?'Abandon run':'Main menu'}</button>`;
   app.appendChild(div);
 }
@@ -738,6 +771,13 @@ app.addEventListener('click',e=>{
     case 'crew': crewOverlay(); break;
     case 'assign': { const c=run.crew[+b.dataset.c], k=b.dataset.k||null; const other=k&&crewAt(k); if(other&&other!==c) other.station=c.station; c.station=k; save(); crewOverlay(); break; }
     case 'close': b.closest('.overlay').remove(); break;
+    case 'guide': guideOverlay(); break;
+    case 'tip': toast({h:`Hull: your ship's health. At 0 the run ends. Repair at traders, some events, and with Medic crew.`,
+      f:'Fuel: each jump on the map costs 1. With none left you still move, but each jump costs 3 hull.',
+      m:'Missiles: ammo for missile weapons only (marked ◆). One per volley. They ignore shields.',
+      s:'Scrap: money. Spend it at traders on weapons, modules, crew, repairs, fuel, and missiles.'}[b.dataset.k],4200); break;
+    case 'wtip': if(C){ const w=C.P.weapons[+b.dataset.i]; toast(`${w.name}: ${wdesc(w.id)}. ${TYPE_NOTE[w.type]}${w.ammo?` You have ${run.missiles} missiles.`:''}`,4200); } break;
+    case 'ewtip': if(C){ const w=C.E.weapons[+b.dataset.i]; toast(`Enemy ${w.name}: ${wdesc(w.id)}. When this bar turns red it is about to fire.`,4200); } break;
     case 'choose': {
       const ev=EVENTS.find(x=>x.id===p.id), c=ev.choices[+b.dataset.i];
       const out=c.go();
@@ -838,13 +878,13 @@ function startCombat(p){
       <div class="prow"><div class="pname" id="eName"></div><div class="pips" id="eSh"></div></div>
       <div class="prow" style="margin-top:4px"><div class="bar"><b id="eHp"></b></div><div class="hpnum" id="eHpN"></div></div>
       <div class="targets">${Object.entries(SYS).map(([k,n])=>`<button class="tgt" data-act="target" data-k="${k}" id="t_${k}">${n}<span class="spips"></span></button>`).join('')}</div>
-      <div class="ewps" style="grid-template-columns:repeat(${E.weapons.length},1fr)">${E.weapons.map((w,i)=>`<div class="ew" id="ew_${i}"><b></b><span>${w.name}</span></div>`).join('')}</div>
+      <div class="ewps" style="grid-template-columns:repeat(${E.weapons.length},1fr)">${E.weapons.map((w,i)=>`<button class="ew" id="ew_${i}" data-act="ewtip" data-i="${i}"><b></b><span>${w.name}</span></button>`).join('')}</div>
     </div>
     <canvas id="cv"></canvas>
     <div class="panel me">
       <div class="prow"><div class="pname" style="flex:none">Starwake</div><div class="pips" id="pSh"></div><div class="bar"><b id="pHp"></b></div><div class="hpnum" id="pHpN"></div></div>
       <div class="systems">${Object.entries(SYS).map(([k,n])=>`<div class="sysc" id="s_${k}"><span>${n}${P.crewLv[k]?`<em>L${P.crewLv[k]}</em>`:''}</span><span class="spips"></span></div>`).join('')}</div>
-      <div class="weps" id="weps">${P.weapons.map((w,i)=>`<div class="wep" id="w_${i}"><b></b><span>${w.name}</span></div>`).join('')}</div>
+      <div class="weps" id="weps">${P.weapons.map((w,i)=>`<button class="wep" id="w_${i}" data-act="wtip" data-i="${i}"><b></b><span>${w.name}${w.ammo?' ◆':''}</span></button>`).join('')}</div>
     </div>
     <div class="abil">${Object.entries(AB).map(([k,a])=>`<button class="ab ${k}" data-act="ability" data-k="${k}" id="a_${k}"><div class="cd"></div><div class="lbl">${a.name}<small>${a.sub}</small></div></button>`).join('')}</div>
   </div>`;
