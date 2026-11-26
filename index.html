@@ -51,7 +51,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .dim{color:var(--dim)}
 .stack{display:flex;flex-direction:column;gap:10px}
 .grow{flex:1;min-height:0}
-.toast{position:absolute;left:16px;right:16px;top:56px;z-index:30;background:rgba(19,26,49,.95);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;pointer-events:none;transition:opacity .4s}
+.toast{position:absolute;left:16px;right:16px;bottom:36%;z-index:30;background:rgba(19,26,49,.95);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;pointer-events:none;transition:opacity .4s}
 
 /* Title */
 .title{justify-content:center;text-align:center}
@@ -152,6 +152,34 @@ canvas{flex:1;min-height:0;width:100%;display:block}
 .li b{display:block;font-size:14.5px}
 .li span{color:var(--dim)}
 
+.ewps{display:grid;gap:5px;margin-top:6px}
+.ew{position:relative;height:18px;border-radius:5px;background:var(--deep);border:1px solid var(--line);overflow:hidden;font-size:10px;font-weight:600;display:flex;align-items:center;padding:0 6px;color:var(--dim)}
+.ew b{position:absolute;inset:0 auto 0 0;background:rgba(255,116,72,.28)}
+.ew span{position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ew.hot{border-color:var(--bad);color:#fff;animation:hot .35s ease-in-out infinite alternate}
+.ew.hot b{background:rgba(255,79,109,.55)}
+@keyframes hot{to{box-shadow:0 0 8px var(--bad)}}
+.ab.incoming::before{content:"INCOMING";position:absolute;top:4px;left:0;right:0;font-size:8.5px;letter-spacing:.12em;color:var(--bad);font-weight:700;z-index:1}
+.ab.incoming.ready{border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad),0 0 16px rgba(255,79,109,.45)}
+.sysc em{font-style:normal;color:var(--gold);font-size:10px;margin-left:3px}
+.crewlist{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;flex:1}
+.crew{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.crow{display:flex;align-items:baseline;gap:8px}
+.crow b{font-size:16px}
+.lv{font-size:12px;font-weight:700;color:var(--gold)}
+.trait{margin-left:auto;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ally);font-weight:600}
+.crew .ds{font-size:12px;color:var(--dim);margin:2px 0 6px}
+.xpbar{height:4px;border-radius:2px;background:#0a0e1d;overflow:hidden;margin-bottom:8px}
+.xpbar b{display:block;height:100%;background:var(--gold)}
+.stchips{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.stc{height:38px;border-radius:9px;border:1px solid var(--line);background:var(--deep);font-size:11px;font-weight:600;padding:0;color:var(--dim)}
+.stc.on{border-color:var(--ally);color:var(--text);background:color-mix(in srgb,var(--ally) 20%,var(--deep))}
+.stgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stbox{background:var(--deep);border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:12px;min-width:0}
+.stbox b{display:block;font-size:12.5px}
+.stbox span{color:var(--dim);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.offer.recruit .tag{color:var(--gold)}
+.choice.gated{border-color:#2f5fa8;background:#14244a}
 @media (max-height:700px){
   .ab{height:54px} .tgt{height:44px} .logo{font-size:46px} .node{width:46px;height:46px;margin:-23px 0 0 -23px}
   .btn{min-height:48px}
@@ -174,7 +202,7 @@ const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 
 /* ---------- block zoom gestures on iOS ---------- */
 ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-document.addEventListener('touchmove',e=>{ if(e.touches.length>1 || !e.target.closest('.shoplist,.overlay .card')) e.preventDefault(); },{passive:false});
+document.addEventListener('touchmove',e=>{ if(e.touches.length>1 || !e.target.closest('.shoplist,.overlay .card,.crewlist')) e.preventDefault(); },{passive:false});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 
 /* ---------- data ---------- */
@@ -210,22 +238,37 @@ const PERKS = {
   drones:   {name:'Repair Drones',      desc:'Systems repair 50% faster; +3 hull after each fight', max:2},
   targeting:{name:'Targeting Suite',    desc:'Enemies get 10% less evasion', max:2},
   coils:    {name:'Surge Coils',        desc:'Shield Surge recharges 30% faster', max:2},
-  burners:  {name:'Afterburners',       desc:'Evasive lasts 1.5s longer', max:2},
+  burners:  {name:'Afterburners',       desc:'Evade window lasts 0.5s longer', max:2},
   cells:    {name:'Overdrive Cells',    desc:'Overdrive recharges 30% faster, lasts 2s longer', max:2},
   salvage:  {name:'Salvage Arm',        desc:'+30% scrap from fights', max:2},
   hardened: {name:'Hardened Systems',   desc:'+1 health on every system', max:2},
   pointdef: {name:'Point Defense',      desc:'25% chance to shoot down incoming missiles', max:2},
   magazine: {name:'Deep Magazine',      desc:'+6 missiles; your missiles deal +1 damage', max:1, apply:r=>{r.missiles+=6}},
 };
+const STATIONS={wep:'Weapons',shd:'Shields',eng:'Engines',helm:'Bridge'};
+const ST_BONUS={wep:l=>`+${8*l}% weapon charge`, shd:l=>`+${10*l}% shield regen`, eng:l=>`+${3*l}% evasion`, helm:l=>`-${6*l}% ability cooldowns`};
+const TRAITS={
+  gunner:{name:'Gunner',       desc:'Weapons charge 10% faster'},
+  deadeye:{name:'Deadeye',     desc:'Enemies get 6% less evasion'},
+  tinker:{name:'Tinkerer',     desc:'Systems repair 30% faster'},
+  warden:{name:'Shieldwright', desc:'Surge adds 2 bonus layers'},
+  ace:{name:'Ace Pilot',       desc:'Evade window lasts 0.6s longer'},
+  medic:{name:'Medic',         desc:'+3 hull after each fight'},
+  scav:{name:'Scavenger',      desc:'+15% scrap from fights'},
+  quick:{name:'Quick Study',   desc:'Earns 50% more XP'},
+  steady:{name:'Steady Hands', desc:'Overdrive lasts 2s longer'},
+};
+const NAMES=['Vex','Oru','Talin','Mara Quell','Dez','Iko','Brannoch','Sefa','Juno Ray','Kesh','Pell','Rook','Ysolde','Tam','Nivri','Cato','Lio','Harrow','Zeyn','Abri','Odessa','Fen'];
+const XPN=[0,4,10,18,28];
 const FOES = {
-  raider: {name:'Rust Raider',    shape:'raider', hull:8,  shields:1, eva:.10, w:['pulse','needle']},
-  skiff:  {name:'Corsair Skiff',  shape:'skiff',  hull:7,  shields:0, eva:.25, w:['needle','seeker'], ai:['evade']},
-  drone:  {name:'Hive Drone',     shape:'drone',  hull:7,  shields:1, eva:.15, w:['ion','needle']},
-  sentry: {name:'Dock Sentry',    shape:'drone',  hull:9,  shields:1, eva:.05, w:['pulse','ion']},
-  frigate:{name:'Warden Frigate', shape:'frigate',hull:12, shields:2, eva:.05, w:['lance','seeker'], min:2},
-  cutter: {name:'Void Cutter',    shape:'cutter', hull:10, shields:1, eva:.20, w:['arc','needle'], ai:['evade'], min:2},
-  barge:  {name:'Siege Barge',    shape:'barge',  hull:15, shields:2, eva:0,   w:['torpedo','flak'], ai:['surge'], min:3},
-  gate:   {name:'Gate Sentinel',  shape:'frigate',hull:14, shields:2, eva:.08, w:['flak','ion','seeker'], ai:['surge']},
+  raider: {name:'Rust Raider',    shape:'raider', hull:10, shields:1, eva:.10, w:['pulse','needle']},
+  skiff:  {name:'Corsair Skiff',  shape:'skiff',  hull:9,  shields:0, eva:.25, w:['needle','seeker'], ai:['evade']},
+  drone:  {name:'Hive Drone',     shape:'drone',  hull:9,  shields:1, eva:.15, w:['ion','needle']},
+  sentry: {name:'Dock Sentry',    shape:'drone',  hull:10, shields:1, eva:.05, w:['pulse','ion']},
+  frigate:{name:'Warden Frigate', shape:'frigate',hull:13, shields:2, eva:.05, w:['lance','seeker'], min:2},
+  cutter: {name:'Void Cutter',    shape:'cutter', hull:11, shields:1, eva:.20, w:['arc','needle'], ai:['evade'], min:2},
+  barge:  {name:'Siege Barge',    shape:'barge',  hull:16, shields:2, eva:0,   w:['torpedo','flak'], ai:['surge'], min:3},
+  gate:   {name:'Gate Sentinel',  shape:'frigate',hull:12, shields:2, eva:.08, w:['flak','ion','seeker'], ai:['surge']},
   boss:   {name:'The Pale Regent',shape:'boss',   hull:36, shields:3, eva:.06, w:['lance','ionstorm','torpedo','flak'], ai:['surge','evade'], boss:true},
 };
 const SHAPES = {
@@ -253,11 +296,30 @@ function save(){
   }catch(e){}
 }
 const perk = id=>(run && run.perks[id])||0;
+const crewAt=k=>run&&run.crew&&run.crew.find(c=>c.station===k);
+const stLv=k=>{const c=crewAt(k);return c?c.lv:0};
+const traitCount=t=>run&&run.crew?run.crew.filter(c=>c.trait===t).length:0;
+const recruitLv=()=>run.sector>=3?2:1;
+function makeCrew(lv=1){
+  const used=new Set((run&&run.crew||[]).map(c=>c.name));
+  return {name:pick(NAMES.filter(n=>!used.has(n))), trait:pick(Object.keys(TRAITS)), lv, xp:XPN[lv-1], station:null};
+}
+function addCrew(c){
+  if(run.crew.length>=5) return false;
+  c.station=['wep','shd','eng','helm'].find(k=>!crewAt(k))||null;
+  run.crew.push(c); return true;
+}
+function giveXP(c,n,out){
+  c.xp+=Math.round(n*(c.trait==='quick'?1.5:1));
+  let lv=1; while(lv<5 && c.xp>=XPN[lv]) lv++;
+  if(lv>c.lv){ c.lv=lv; if(out) out.push([`${c.name} reached Lv ${lv}`,true]); }
+}
 
 /* ---------- run ---------- */
 function newRun(){
   run = {sector:1, hull:30, hullMax:30, shieldMax:1, evasion:.10, scrap:20, fuel:8, missiles:8,
-    weapons:['pulse','seeker'], perks:{}, map:genMap(1), pos:0, jumps:0, kills:0, seen:[], pending:null};
+    weapons:['pulse','seeker'], perks:{}, map:genMap(1), pos:0, jumps:0, kills:0, seen:[], pending:null, crew:[]};
+  addCrew(makeCrew(1)); addCrew(makeCrew(1));
   meta.runs++;
   view='run'; save(); render();
 }
@@ -317,6 +379,10 @@ function applyGain(d){
   if(d.scrap){ run.scrap=Math.max(0,run.scrap+d.scrap); ch.push([`${d.scrap>0?'+':''}${d.scrap} scrap`,d.scrap>0]); }
   if(d.missiles){ run.missiles=Math.max(0,run.missiles+d.missiles); ch.push([`${d.missiles>0?'+':''}${d.missiles} missiles`,d.missiles>0]); }
   if(d.perk){ givePerk(d.perk); ch.push([PERKS[d.perk].name,true]); }
+  if(d.crew){ const c=makeCrew(d.crew); if(addCrew(c)) ch.push([`${c.name} joins (${TRAITS[c.trait].name})`,true]); else { run.scrap+=15; ch.push(['Crew full: +15 scrap',true]); } }
+  if(d.xp){ ch.push([`Crew +${d.xp} XP`,true]); run.crew.forEach(c=>giveXP(c,d.xp,ch)); }
+  if(d.lvOne){ const pool=run.crew.filter(c=>c.lv<5); if(pool.length){ const c=pick(pool); c.xp=Math.max(c.xp,XPN[c.lv]); giveXP(c,0,ch); } }
+  if(d.loseCrew && run.crew.length>1){ const c=run.crew.splice(ri(0,run.crew.length-1),1)[0]; ch.push([`${c.name} leaves`,false]); }
   return ch;
 }
 function givePerk(id){ run.perks[id]=(run.perks[id]||0)+1; const p=PERKS[id]; if(p.apply) p.apply(run); }
@@ -327,6 +393,52 @@ const fight=(foe,text)=>({text, changes:[], fight:foe});
 const gainWeapon=text=>{ const w=randWeapon(Math.min(3,run.sector+1)); return {text:`${text} It's a ${WEAPONS[w].name}.`, changes:[[WEAPONS[w].name,true]], weapon:w}; };
 
 const EVENTS = [
+  {id:'cryo', title:'Cryo Pod', text:'A frosted stasis pod drifts across your bow. A faint heartbeat shows on the scan.', choices:[
+    {label:'Thaw it out', go:()=>R()<.7?gain({crew:recruitLv()},'The sleeper wakes, blinks, and asks for a job.'):gain({scrap:12},'The pod was empty. You sell the cryo unit instead.')},
+    {label:'Leave it frozen', go:()=>gain({},'Someone else can wake them.')}]},
+  {id:'cantina', title:'Dockside Cantina', text:'A rough bar bolted to an ore hauler. Pilots between jobs nurse cheap drinks.', choices:[
+    {label:'Hire a drifter (20 scrap)', req:r=>r.scrap>=20&&r.crew.length<5, go:()=>gain({scrap:-20,crew:recruitLv()},'A drifter shoulders a bag and follows you to the airlock.')},
+    {label:'Buy your crew a round (6 scrap)', req:r=>r.scrap>=6, go:()=>gain({scrap:-6,xp:3},'Stories get swapped. Everyone learns a trick or two.')},
+    {label:'Move on', go:()=>gain({},'You undock before the bar fight starts.')}]},
+  {id:'sim', title:'Derelict Training Sim', text:'An old navy training satellite still runs combat drills if you feed it power.', choices:[
+    {label:'Run the drills (1 fuel)', req:r=>r.fuel>=1, go:()=>gain({fuel:-1,xp:4},'Hours of simulated dogfights. Your crew comes out sharper.')},
+    {label:'Strip it for parts', go:()=>gain({scrap:ri(10,16)},'The sim goes dark as you pull its cores.')}]},
+  {id:'gap', title:'Narrow Gap', text:'Two drifting asteroids leave a slim gap. Threading it saves a long detour.', choices:[
+    {label:'[Engines crew Lv 2] Let your pilot fly it', gate:'eng', req:r=>stLv('eng')>=2, go:()=>gain({fuel:1},'Clean through. You save fuel and your pilot grins.')},
+    {label:'Try to thread it', go:()=>R()<.5?gain({fuel:1},'Scraped paint, nothing worse.'):gain({hull:-5},'You clip a rock hard.')},
+    {label:'Go around (1 fuel)', req:r=>r.fuel>=1, go:()=>gain({fuel:-1},'Slow but safe.')}]},
+  {id:'boarders', title:'Boarding Clamp', text:'A raider pod latches onto your hull and starts cutting in.', choices:[
+    {label:'[Weapons crew Lv 2] Repel them', gate:'wep', req:r=>stLv('wep')>=2, go:()=>gain({scrap:18,xp:2},'Your gunner leads the defense. The pod leaves without its crew or its loot.')},
+    {label:'Fight them hand to hand', go:()=>R()<.55?gain({xp:2,scrap:10},'A messy brawl, but you win and keep their gear.'):gain({hull:-6,xp:2},'You drive them off, but they wreck a corridor first.')},
+    {label:'Vent the airlock', go:()=>gain({hull:-3},'Pod and boarders tumble away. The breach costs you some hull.')}]},
+  {id:'defector', title:'Defector', text:'A pirate pilot hails you on a private channel, asking to switch sides.', choices:[
+    {label:'Take them aboard', go:()=>R()<.75?gain({crew:recruitLv()},'They hand over their codes and take a station.'):fight('skiff','It was a trick. Their wingmates drop out of hiding.')},
+    {label:'Refuse', go:()=>gain({},'They curse and break off.')}]},
+  {id:'nebula', title:'Quiet Nebula', text:'A calm pocket of gas hides you from scanners. A good place to rest or to harvest fuel.', choices:[
+    {label:'Rest and patch up', go:()=>gain({hull:4,xp:2},'A rare quiet day. Repairs, sleep, and some training.')},
+    {label:'Harvest gas for fuel', go:()=>R()<.7?gain({fuel:2},'The scoops fill without trouble.'):gain({fuel:1,hull:-3},'A static discharge rattles the hull, but you get some fuel.')}]},
+  {id:'auction', title:'Salvage Auction', text:'Scavengers auction off weapons pulled from recent battles.', choices:[
+    {label:'Bid on a weapon (35 scrap)', req:r=>r.scrap>=35, go:()=>{ run.scrap-=35; const o=gainWeapon('You win the lot.'); o.changes.unshift(['-35 scrap',false]); return o; }},
+    {label:'Buy a missile crate (15 scrap)', req:r=>r.scrap>=15, go:()=>gain({scrap:-15,missiles:6},'Six missiles, slightly used.')},
+    {label:'Just watch', go:()=>gain({},'Prices climb past your budget.')}]},
+  {id:'grumble', title:'Grumbling Crew', text:'Long shifts are wearing on your crew. Someone is talking about leaving at the next port.', minCrew:3, choices:[
+    {label:'Pay a bonus (15 scrap)', req:r=>r.scrap>=15, go:()=>gain({scrap:-15,xp:3},'Morale lifts and everyone works harder.')},
+    {label:'Hold a gunnery contest', go:()=>gain({lvOne:1},'Friendly rivalry pushes one of them to a new level.')},
+    {label:'Ignore it', go:()=>R()<.5?gain({loseCrew:1},'At the next port, one of them walks off.'):gain({},'It blows over.')}]},
+  {id:'monolith', title:'Drifting Monolith', text:'A smooth black slab tumbles slowly. Touching it, the old stories say, changes people.', choices:[
+    {label:'Send someone to touch it', go:()=>R()<.6?gain({lvOne:1},'They come back quiet, and somehow much better at their job.'):gain({hull:-5},'A pulse of energy flashes back along the tether and scorches the hull.')},
+    {label:'Scan it', go:()=>gain({scrap:8},'The scan data is worth a little scrap.')}]},
+  {id:'mines', title:'Minefield', text:'Old proximity mines litter the jump point.', choices:[
+    {label:'[Shields crew Lv 2] Push through on shields', gate:'shd', req:r=>stLv('shd')>=2, go:()=>gain({xp:1},'The shields soak every blast. Not a scratch.')},
+    {label:'Push through', go:()=>gain({hull:-ri(3,6)},'Two mines catch you on the way through.')},
+    {label:'Go around (1 fuel)', req:r=>r.fuel>=1, go:()=>gain({fuel:-1},'The long way, untouched.')}]},
+  {id:'aftermath', title:'Battle Aftermath', text:'Two warships killed each other here. Wreckage glitters in every direction.', choices:[
+    {label:'Search for survivors', go:()=>R()<.45?gain({crew:recruitLv(),scrap:8},'One survivor, half-frozen and very grateful.'):gain({scrap:14},'No survivors, but plenty of salvage.')},
+    {label:'Strip the wrecks fast', go:()=>R()<.7?gain({scrap:ri(18,28)},'You load up and leave.'):fight('skiff','A scavenger crew wants this field for themselves.')}]},
+  {id:'drill', title:'Bridge Drill', text:'A quiet stretch. Your officers suggest running emergency drills.', choices:[
+    {label:'[Bridge crew] Run full drills', gate:'helm', req:r=>stLv('helm')>=1, go:()=>gain({xp:3},'Everyone runs their station blindfolded by the end.')},
+    {label:'Run a short drill', go:()=>gain({xp:1},'Some practice is better than none.')},
+    {label:'Let everyone rest', go:()=>gain({hull:2},'You patch a few panels instead.')}]},
   {id:'derelict', title:'Silent Freighter', text:'A cargo hauler tumbles end over end, running lights dead. Its hold doors hang half open.', choices:[
     {label:'Send a boarding drone', go:()=>R()<.6?gain({scrap:ri(20,32)},'The drone returns dragging salvage crates.'):gain({hull:-4},'A pressure door blows as the drone cuts in. Debris peppers your hull.')},
     {label:'Strip plating from outside', go:()=>gain({scrap:ri(8,14)},'Slow, safe work. You cut away a few panels worth selling.')},
@@ -387,7 +499,8 @@ function enterNode(node, fumes){
     case 'boss': run.pending={kind:'combat', foe:'boss', intro:pre, boss:true}; break;
     case 'shop': run.pending={kind:'shop', stock:makeStock(), intro:pre}; break;
     case 'event': {
-      let pool=EVENTS.filter(e=>!run.seen.includes(e.id)); if(!pool.length){ run.seen=[]; pool=EVENTS; }
+      const okEv=e=>!e.minCrew||run.crew.length>=e.minCrew;
+      let pool=EVENTS.filter(e=>!run.seen.includes(e.id)&&okEv(e)); if(!pool.length){ run.seen=[]; pool=EVENTS.filter(okEv); }
       const e=pick(pool); run.seen.push(e.id);
       run.pending={kind:'event', id:e.id, intro:pre}; break;
     }
@@ -399,7 +512,8 @@ const WPRICE=[0,32,52,78];
 function makeStock(){
   const ws=shuffle(Object.keys(WEAPONS).filter(k=>WEAPONS[k].tier<=run.sector+1)).slice(0,3);
   const ps=shuffle(Object.keys(PERKS).filter(k=>perk(k)<PERKS[k].max)).slice(0,2);
-  return [...ws.map(id=>({kind:'weapon',id,price:WPRICE[WEAPONS[id].tier]})), ...ps.map(id=>({kind:'perk',id,price:42+6*run.sector}))];
+  const c=makeCrew(recruitLv());
+  return [...ws.map(id=>({kind:'weapon',id,price:WPRICE[WEAPONS[id].tier]})), ...ps.map(id=>({kind:'perk',id,price:42+6*run.sector})), {kind:'crew',id:c.name,c,price:36+8*run.sector}];
 }
 function makeOffers(rich){
   const out=[], used=new Set();
@@ -407,16 +521,19 @@ function makeOffers(rich){
   while(out.length<3){
     const roll=R(); let o;
     if(roll<.4){ const id=randWeapon(tierCap); o={kind:'weapon',id}; }
-    else if(roll<.88){ const id=randPerk(); o={kind:'perk',id}; }
+    else if(roll<.78){ const id=randPerk(); o={kind:'perk',id}; }
+    else if(roll<.9 && run.crew.length<5){ const c=makeCrew(recruitLv()); o={kind:'crew',id:c.name,c}; }
     else o={kind:'repair',id:'repair'};
     const key=o.kind+o.id; if(used.has(key)) continue; used.add(key); out.push(o);
   }
   return out;
 }
-function offerTitle(o){ return o.kind==='weapon'?WEAPONS[o.id].name:o.kind==='perk'?PERKS[o.id].name:'Field Repairs'; }
-function offerDesc(o){ return o.kind==='weapon'?`${wdesc(o.id)}. ${TYPE_NOTE[WEAPONS[o.id].type]}`:o.kind==='perk'?PERKS[o.id].desc:'Repair 12 hull'; }
+function offerTitle(o){ return o.kind==='weapon'?WEAPONS[o.id].name:o.kind==='perk'?PERKS[o.id].name:o.kind==='crew'?`${o.c.name}, ${TRAITS[o.c.trait].name}`:'Field Repairs'; }
+function offerDesc(o){ return o.kind==='weapon'?`${wdesc(o.id)}. ${TYPE_NOTE[WEAPONS[o.id].type]}`:o.kind==='perk'?PERKS[o.id].desc:o.kind==='crew'?`Lv ${o.c.lv} crew. ${TRAITS[o.c.trait].desc}.`:'Repair 12 hull'; }
+function shopDesc(s){ return s.kind==='weapon'?wdesc(s.id):s.kind==='perk'?PERKS[s.id].desc:`Crew Lv ${s.c.lv} · ${TRAITS[s.c.trait].desc}`; }
 function takeOffer(o, next){
   if(o.kind==='perk') givePerk(o.id);
+  else if(o.kind==='crew'){ if(!addCrew(o.c)) run.scrap+=15; }
   else if(o.kind==='repair') run.hull=Math.min(run.hullMax,run.hull+12);
   else if(o.kind==='weapon'){
     if(run.weapons.length<4) run.weapons.push(o.id);
@@ -469,8 +586,9 @@ function renderTitle(){
     <div class="howto" id="howto">
       <p><b>Combat runs itself.</b> Your weapons fire automatically as they charge.</p>
       <p><b>You make the calls.</b> Tap an enemy system to aim at it. Knock out <b>Weapons</b> to stop their guns, <b>Shields</b> to let your lasers through, <b>Engines</b> so you stop missing.</p>
-      <p><b>Time your abilities.</b> <b>Surge</b> refills shields plus one bonus layer. <b>Evade</b> dodges incoming shots. <b>Overdrive</b> charges your weapons fast.</p>
-      <p><b>Between fights</b> pick a route up the map, buy gear at traders, and choose upgrades. If your hull hits zero, the run is over.</p>
+      <p><b>Watch the red bars.</b> Under the enemy, each weapon shows its charge. When one turns red, a volley is about to fire. Tap <b>Evade</b> right then to dodge almost everything for a second, or <b>Surge</b> to throw up extra shield layers. Save <b>Overdrive</b> for when their shields are down.</p>
+      <p><b>Build a crew.</b> Put crew on Weapons, Shields, Engines, and the Bridge. They level up from fighting and boost their station. Recruit more from events, traders, and rewards.</p>
+      <p>If your hull hits zero, the run is over.</p>
     </div>
     <div class="stack">
       ${run?`<button class="btn primary" data-act="continue">Continue run · Sector ${run.sector}</button>`:''}
@@ -492,7 +610,7 @@ function renderMap(){
     const cls=['node',n.type, reach?'reach':'', n.id===here.id?'here':(n.seen?'seen':'')].join(' ');
     return `<button class="${cls}" style="left:${W(n)};top:${H(n)}" ${reach?`data-act="jump" data-id="${n.id}"`:'disabled'} aria-label="${LBL[n.type][1]}">${LBL[n.type][0]}<small>${LBL[n.type][1]}</small></button>`;
   }).join('');
-  app.innerHTML=`${hud(`<button class="iconbtn" data-act="ship">Ship</button>`)}
+  app.innerHTML=`${hud(`<button class="iconbtn" data-act="crew">Crew</button><button class="iconbtn" data-act="ship">Ship</button>`)}
   <div class="screen">
     <div class="maphead"><h2 style="font-size:19px">${SECTORS[run.sector-1]}</h2><span class="tag">Jump ${run.jumps} · ${run.fuel?'1 fuel per jump':'no fuel left'}</span></div>
     <div class="mapwrap"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>${nodes}</div>
@@ -505,7 +623,7 @@ function renderEvent(p){
     <div class="tag">Signal</div><h2 class="evtitle">${esc(e.title)}</h2>
     ${p.intro?`<p class="dim" style="margin:0;font-size:13px">${esc(p.intro)}</p>`:''}
     <p class="evtext">${esc(e.text)}</p>
-    <div class="choices">${e.choices.map((c,i)=>{const ok=!c.req||c.req(run);return `<button class="btn choice" data-act="choose" data-i="${i}" ${ok?'':'disabled'}>${esc(c.label)}</button>`}).join('')}</div>
+    <div class="choices">${e.choices.map((c,i)=>{const ok=!c.req||c.req(run);return `<button class="btn choice ${c.gate?'gated':''}" data-act="choose" data-i="${i}" ${ok?'':'disabled'}>${esc(c.label)}</button>`}).join('')}</div>
   </div>`;
 }
 function renderOutcome(p){
@@ -524,7 +642,7 @@ function renderShop(p){
     {k:'fuel',nm:'Fuel cell',ds:'+1 fuel',price:4,ok:true},
     {k:'msl',nm:'Missile pair',ds:'+2 missiles',price:7,ok:true},
   ];
-  const items=p.stock.map((s,i)=>`<div class="srow"><div class="info"><div class="nm">${esc(offerTitle(s))}</div><div class="ds">${esc(s.kind==='weapon'?wdesc(s.id):PERKS[s.id].desc)}</div></div>
+  const items=p.stock.map((s,i)=>`<div class="srow"><div class="info"><div class="nm">${esc(offerTitle(s))}</div><div class="ds">${esc(shopDesc(s))}</div></div>
      <button class="buy" data-act="buy" data-i="${i}" ${s.sold||!can(s.price)?'disabled':''}>${s.sold?'Sold':s.price}</button></div>`).join('');
   const svcs=svc.map(s=>`<div class="srow"><div class="info"><div class="nm">${s.nm}</div><div class="ds">${s.ds}</div></div>
      <button class="buy" data-act="svc" data-k="${s.k}" data-p="${s.price}" ${!s.ok||!can(s.price)?'disabled':''}>${s.price}</button></div>`).join('');
@@ -540,7 +658,7 @@ function renderReward(p){
     <div><div class="tag">${p.boss?'Flagship destroyed':'Enemy destroyed'}</div><h2 class="evtitle">Salvage</h2></div>
     <div class="changes">${L.map(([t,up])=>`<span class="chip ${up?'up':'down'}">${esc(t)}</span>`).join('')}</div>
     <div class="tag" style="margin-top:4px">Choose one</div>
-    <div class="offers">${p.offers.map((o,i)=>`<button class="offer ${o.kind}" data-act="take" data-i="${i}"><span class="tag">${o.kind==='perk'?'Module':o.kind==='weapon'?'Weapon':'Repair'}</span><span class="nm">${esc(offerTitle(o))}</span><span class="ds">${esc(offerDesc(o))}</span></button>`).join('')}</div>
+    <div class="offers">${p.offers.map((o,i)=>`<button class="offer ${o.kind==='crew'?'recruit':o.kind}" data-act="take" data-i="${i}"><span class="tag">${o.kind==='perk'?'Module':o.kind==='weapon'?'Weapon':o.kind==='crew'?'Crew':'Repair'}</span><span class="nm">${esc(offerTitle(o))}</span><span class="ds">${esc(offerDesc(o))}</span></button>`).join('')}</div>
     <div class="choices"><button class="btn ghost" data-act="take" data-i="-1">Skip and sell for 10 scrap</button></div>
   </div>`;
 }
@@ -568,6 +686,21 @@ function renderEnd(){
     <div class="meta">Runs ${meta.runs} · Wins ${meta.wins}</div>
   </div>`;
 }
+function crewOverlay(){
+  const old=app.querySelector('.overlay'); const sc=old&&old.querySelector('.crewlist')?old.querySelector('.crewlist').scrollTop:0; if(old) old.remove();
+  const div=document.createElement('div'); div.className='overlay';
+  div.innerHTML=`<div class="shophead"><h2>Crew</h2><span class="tag">${run.crew.length}/5 aboard</span></div>
+  <div class="stgrid">${Object.entries(STATIONS).map(([k,n])=>{const c=crewAt(k);return `<div class="stbox"><b>${n}</b><span>${c?`${esc(c.name)} · ${ST_BONUS[k](c.lv)}`:(k==='helm'?'Empty':'Empty · slow repairs')}</span></div>`}).join('')}</div>
+  <div class="crewlist">${run.crew.map((c,i)=>{const need=c.lv<5?XPN[c.lv]:null, prev=XPN[c.lv-1];
+    return `<div class="crew"><div class="crow"><b>${esc(c.name)}</b><span class="lv">Lv ${c.lv}</span><span class="trait">${TRAITS[c.trait].name}</span></div>
+    <div class="ds">${TRAITS[c.trait].desc}${need?` · ${c.xp-prev}/${need-prev} XP to Lv ${c.lv+1}`:' · max level'}</div>
+    <div class="xpbar"><b style="width:${need?100*(c.xp-prev)/(need-prev):100}%"></b></div>
+    <div class="stchips">${['wep','shd','eng','helm',''].map(k=>`<button class="stc ${(c.station||'')===k?'on':''}" data-act="assign" data-c="${i}" data-k="${k}">${k?STATIONS[k]:'Bench'}</button>`).join('')}</div></div>`}).join('')}</div>
+  <p class="dim" style="margin:0;font-size:12px">Station bonuses grow with level, and a crewed system repairs faster. XP comes from fights: gunners for hits, shield crew for blocks, pilots for dodges, bridge for abilities used. Benched crew only earn a little.</p>
+  <button class="btn primary" data-act="close">Done</button>`;
+  app.appendChild(div);
+  if(sc) div.querySelector('.crewlist').scrollTop=sc;
+}
 function shipOverlay(inCombat){
   const div=document.createElement('div'); div.className='overlay';
   const perks=Object.entries(run.perks);
@@ -581,9 +714,12 @@ function shipOverlay(inCombat){
      </div>
      <div class="tag">Weapons</div>
      <div class="list">${run.weapons.map(w=>`<div class="li"><b>${WEAPONS[w].name}</b><span>${wdesc(w)}</span></div>`).join('')}</div>
+     <div class="tag">Crew</div>
+     <div class="list">${run.crew.map(c=>`<div class="li"><b>${esc(c.name)} · Lv ${c.lv} ${TRAITS[c.trait].name}</b><span>${c.station?STATIONS[c.station]+': '+ST_BONUS[c.station](c.lv):'Bench'}</span></div>`).join('')}</div>
      <div class="tag">Modules</div>
      <div class="list">${perks.length?perks.map(([k,n])=>`<div class="li"><b>${PERKS[k].name}${n>1?' ×'+n:''}</b><span>${PERKS[k].desc}</span></div>`).join(''):'<div class="li"><span>None yet. Win fights and visit traders.</span></div>'}</div>
    </div>
+   ${inCombat?`<div class="card list" style="flex:none"><div class="li"><b>Evade</b><span>Dodges almost every shot for about a second. Tap it when an enemy weapon bar turns red or shots are in the air.</span></div><div class="li"><b>Surge</b><span>Refills shields and adds a bonus layer. Best right after your shields get knocked down, just before the next volley.</span></div><div class="li"><b>Overdrive</b><span>Weapons charge almost twice as fast. Use it while the enemy's shields are down.</span></div></div>`:''}
    ${inCombat?`<button class="btn primary" data-act="resume">Resume</button>`:`<button class="btn primary" data-act="close">Back to map</button>`}
    <button class="btn ghost" data-act="${inCombat?'abandon':'menu'}">${inCombat?'Abandon run':'Main menu'}</button>`;
   app.appendChild(div);
@@ -599,6 +735,8 @@ app.addEventListener('click',e=>{
     case 'menu': view='title'; save(); render(); break;
     case 'jump': jump(+b.dataset.id); break;
     case 'ship': shipOverlay(false); break;
+    case 'crew': crewOverlay(); break;
+    case 'assign': { const c=run.crew[+b.dataset.c], k=b.dataset.k||null; const other=k&&crewAt(k); if(other&&other!==c) other.station=c.station; c.station=k; save(); crewOverlay(); break; }
     case 'close': b.closest('.overlay').remove(); break;
     case 'choose': {
       const ev=EVENTS.find(x=>x.id===p.id), c=ev.choices[+b.dataset.i];
@@ -615,8 +753,9 @@ app.addEventListener('click',e=>{
     case 'buy': {
       const s=p.stock[+b.dataset.i]; if(s.sold||run.scrap<s.price) return;
       if(s.kind==='weapon' && run.weapons.length>=4){ toast('Weapon bays full (4). Scrap one from a reward screen first.'); return; }
+      if(s.kind==='crew' && run.crew.length>=5){ toast('No room: 5 crew is the maximum.'); return; }
       run.scrap-=s.price; s.sold=true;
-      if(s.kind==='weapon') run.weapons.push(s.id); else givePerk(s.id);
+      if(s.kind==='weapon') run.weapons.push(s.id); else if(s.kind==='crew') addCrew(s.c); else givePerk(s.id);
       save(); render(); break;
     }
     case 'svc': {
@@ -660,32 +799,38 @@ function mkSys(m){ const s={}; for(const k in SYS) s[k]={hp:m,max:m,ion:0,rt:0,f
 function mkWeapon(id, start){ const w=WEAPONS[id]; return {id, ...w, charge:start*w.cd}; }
 function makePlayer(){
   return {player:true, name:'Starwake', shape:'player', hull:run.hull, hullMax:run.hullMax, shieldMax:run.shieldMax, shields:run.shieldMax, shieldT:0,
-    eva:run.evasion, acc:.10*perk('targeting'), chargeMul:1+.15*perk('capacitor'), repairMul:1+.5*perk('drones'),
-    sys:mkSys(3+perk('hardened')), weapons:run.weapons.map(id=>mkWeapon(id,.15)), evading:0, od:0, over:false, hitFlash:0, shieldFlash:0, x:0,y:0, size:1};
+    eva:run.evasion+.03*stLv('eng'), acc:.10*perk('targeting')+.06*traitCount('deadeye'),
+    chargeMul:(1+.15*perk('capacitor'))*(1+.08*stLv('wep')+.10*traitCount('gunner')), repairMul:(1+.5*perk('drones'))*(1+.3*traitCount('tinker')),
+    regen:2.2/(1+.10*stLv('shd')), crewLv:{wep:stLv('wep'),shd:stLv('shd'),eng:stLv('eng')},
+    sys:mkSys(3+perk('hardened')), weapons:run.weapons.map(id=>mkWeapon(id,.15)), evading:0, od:0, over:0, hitFlash:0, shieldFlash:0, x:0,y:0, size:1};
 }
 function makeFoe(key, elite){
   const f=FOES[key], s=run.sector;
   let hull=f.hull+4*(s-1), shields=Math.min(3,f.shields+(s===3&&!f.boss?1:0));
   let weapons=f.w.slice(), name=f.name;
-  if(elite){ hull=Math.round(hull*1.4); shields=Math.min(3,shields+1); weapons.push(randWeapon(Math.min(3,s+1))); name='Veteran '+name; }
+  let ai=(f.ai||[]).slice();
+  if(key==='gate'){ shields=s===1?1:2; if(s===1){ weapons=['pulse','ion','seeker']; ai=[]; } }
+  if(!elite && !f.boss && key!=='gate' && s>=2 && R()<.5) weapons.push(randWeapon(s));
+  if(elite){ hull=Math.round(hull*1.3); shields=Math.min(3,shields+1); weapons.push(randWeapon(Math.min(3,s+1))); name='Veteran '+name; }
   const sm = s>=2?3:2;
   return {player:false, key, name, shape:f.shape, hull, hullMax:hull, shieldMax:shields, shields, shieldT:0, eva:f.eva, acc:0,
-    chargeMul:1+.08*(s-1), repairMul:f.boss?.6:.8, sys:mkSys(sm), weapons:weapons.map(id=>mkWeapon(id,R()*.4)), ai:f.ai||[], boss:!!f.boss,
-    abT:{evade:4+R()*4, surge:6}, evading:0, od:0, over:false, hitFlash:0, shieldFlash:0, phase:1, elite:!!elite, x:0,y:0, size:f.boss?1.35:1};
+    chargeMul:1+.08*(s-1), repairMul:f.boss?.6:.8, sys:mkSys(sm), weapons:weapons.map(id=>mkWeapon(id,R()*.4)), ai, boss:!!f.boss,
+    abT:{evade:4+R()*4, surge:6}, evading:0, od:0, over:0, hitFlash:0, shieldFlash:0, phase:1, elite:!!elite, x:0,y:0, size:f.boss?1.35:1};
 }
 const sysF=(s,k)=>s.sys[k].ion>0?0:s.sys[k].hp/s.sys[k].max;
 const layerCap=s=>s.sys[s.player?'shd':'shd'].hp<=0?0:Math.ceil(s.shieldMax*s.sys.shd.hp/s.sys.shd.max);
-const evasion=(s,att)=>clamp(s.eva*sysF(s,'eng')+(s.evading>0&&s.sys.eng.hp>0?.45:0)-(att?att.acc:0),0,.85);
+const evasion=(s,att)=>{ if(s.evading>0&&s.sys.eng.hp>0) return s.player?.85:.6; return clamp(s.eva*sysF(s,'eng')-(att?att.acc:0),0,.6); };
+const helmMul=()=>1-.06*stLv('helm');
 const AB={
-  surge:{name:'Surge', sub:'Shields', cd:()=>20*Math.pow(.7,perk('coils'))},
-  evade:{name:'Evade', sub:'Dodge', cd:()=>14, dur:()=>3+1.5*perk('burners')},
-  od:{name:'Overdrive', sub:'Weapons', cd:()=>24*Math.pow(.7,perk('cells')), dur:()=>5+2*perk('cells')},
+  surge:{name:'Surge', sub:'Shields', cd:()=>16*Math.pow(.7,perk('coils'))*helmMul()},
+  evade:{name:'Evade', sub:'Dodge', cd:()=>10*helmMul(), dur:()=>1.2+.5*perk('burners')+.6*traitCount('ace')},
+  od:{name:'Overdrive', sub:'Weapons', cd:()=>24*Math.pow(.7,perk('cells'))*helmMul(), dur:()=>5+2*perk('cells')+2*traitCount('steady')},
 };
 
 function startCombat(p){
   const E=makeFoe(p.foe, p.elite), P=makePlayer();
   domCache={};
-  C={P,E,p, proj:[], parts:[], texts:[], beams:[], target:'wep', t:0, over:null, endT:0, shake:0, paused:false,
+  C={P,E,p, st:{hit:0,block:0,dodge:0,ab:0}, proj:[], parts:[], texts:[], beams:[], target:'wep', t:0, over:null, endT:0, shake:0, paused:false,
      ab:{surge:{t:0},evade:{t:0},od:{t:0}}, stars:Array.from({length:70},()=>({x:R(),y:R(),z:.3+R()*.7}))};
   app.innerHTML=`${hud(`<button class="iconbtn" data-act="pause" aria-label="Pause">II</button>`)}
   <div class="cbt">
@@ -693,11 +838,12 @@ function startCombat(p){
       <div class="prow"><div class="pname" id="eName"></div><div class="pips" id="eSh"></div></div>
       <div class="prow" style="margin-top:4px"><div class="bar"><b id="eHp"></b></div><div class="hpnum" id="eHpN"></div></div>
       <div class="targets">${Object.entries(SYS).map(([k,n])=>`<button class="tgt" data-act="target" data-k="${k}" id="t_${k}">${n}<span class="spips"></span></button>`).join('')}</div>
+      <div class="ewps" style="grid-template-columns:repeat(${E.weapons.length},1fr)">${E.weapons.map((w,i)=>`<div class="ew" id="ew_${i}"><b></b><span>${w.name}</span></div>`).join('')}</div>
     </div>
     <canvas id="cv"></canvas>
     <div class="panel me">
       <div class="prow"><div class="pname" style="flex:none">Starwake</div><div class="pips" id="pSh"></div><div class="bar"><b id="pHp"></b></div><div class="hpnum" id="pHpN"></div></div>
-      <div class="systems">${Object.entries(SYS).map(([k,n])=>`<div class="sysc" id="s_${k}">${n}<span class="spips"></span></div>`).join('')}</div>
+      <div class="systems">${Object.entries(SYS).map(([k,n])=>`<div class="sysc" id="s_${k}"><span>${n}${P.crewLv[k]?`<em>L${P.crewLv[k]}</em>`:''}</span><span class="spips"></span></div>`).join('')}</div>
       <div class="weps" id="weps">${P.weapons.map((w,i)=>`<div class="wep" id="w_${i}"><b></b><span>${w.name}</span></div>`).join('')}</div>
     </div>
     <div class="abil">${Object.entries(AB).map(([k,a])=>`<button class="ab ${k}" data-act="ability" data-k="${k}" id="a_${k}"><div class="cd"></div><div class="lbl">${a.name}<small>${a.sub}</small></div></button>`).join('')}</div>
@@ -723,10 +869,10 @@ function useAbility(k){
   if(!C||C.over||C.paused) return;
   const a=C.ab[k], P=C.P;
   if(a.t>0) return;
-  if(k==='surge'){ const cap=layerCap(P); if(cap<=0&&P.sys.shd.ion<=0){ toast('Shield system is wrecked. Wait for repairs.'); return; } P.shields=Math.max(P.shields,cap)+1; P.over=true; P.shieldFlash=1; float(P,'SURGE','#79b8ff'); }
+  if(k==='surge'){ const cap=layerCap(P); if(cap<=0&&P.sys.shd.ion<=0){ toast('Shield system is wrecked. Wait for repairs.'); return; } const bonus=traitCount('warden')?2:1; P.shields=Math.max(P.shields,cap)+bonus; P.over=bonus; P.shieldFlash=1; float(P,'SURGE','#79b8ff'); }
   if(k==='evade'){ if(P.sys.eng.hp<=0){ toast('Engines are wrecked. Wait for repairs.'); return; } P.evading=AB.evade.dur(); float(P,'EVASIVE','#5ee3a4'); }
   if(k==='od'){ if(P.sys.wep.hp<=0){ toast('Weapons are wrecked. Wait for repairs.'); return; } P.od=AB.od.dur(); float(P,'OVERDRIVE','#ffc65c'); }
-  a.t=AB[k].cd(); buzz(15);
+  a.t=AB[k].cd(); C.st.ab++; buzz(15);
 }
 
 function float(s,text,color,dy=0){ C.texts.push({x:s.x+(R()-.5)*30,y:s.y-s.r*.6+dy,text,color,life:1.1}); }
@@ -773,13 +919,13 @@ function tickShip(s,o,dt){
   for(const k in SYS){
     const y=s.sys[k];
     y.ion=Math.max(0,y.ion-dt);
-    if(y.hp<y.max){ y.rt+=dt*s.repairMul; if(y.rt>=7){ y.rt=0; y.hp++; if(s.player) float(s,`${SYS[k]} repaired`,'#5ee3a4',20); } } else y.rt=0;
+    if(y.hp<y.max){ y.rt+=dt*s.repairMul*(s.player?(s.crewLv[k]?1+.25*s.crewLv[k]:.6):1); if(y.rt>=7){ y.rt=0; y.hp++; if(s.player) float(s,`${SYS[k]} repaired`,'#5ee3a4',20); } } else y.rt=0;
   }
   // shields
   const cap=layerCap(s);
-  if(s.shields<=cap) s.over=false;
-  if(s.shields>cap+(s.over?1:0)) s.shields=cap+(s.over?1:0);
-  if(s.shields<cap && s.sys.shd.ion<=0){ s.shieldT+=dt; const regen=s.player?2.2:2.6*(1+Math.max(0,(C.t-60)/40)); if(s.shieldT>=regen){ s.shieldT=0; s.shields++; } } else s.shieldT=0;
+  if(s.shields<=cap) s.over=0;
+  if(s.shields>cap+(+s.over||0)) s.shields=cap+(+s.over||0);
+  if(s.shields<cap && s.sys.shd.ion<=0){ s.shieldT+=dt; const regen=s.player?s.regen:2.6*(1+Math.max(0,(C.t-60)/40)); if(s.shieldT>=regen){ s.shieldT=0; s.shields++; } } else s.shieldT=0;
   // weapons
   const f=sysF(s,'wep');
   for(const w of s.weapons){
@@ -797,14 +943,14 @@ function enemyAI(dt){
   const {E,P}=C;
   E.abT.evade-=dt; E.abT.surge-=dt;
   const incoming=C.proj.some(p=>p.dst===E && !p.done && p.type!=='beam');
-  if(E.ai.includes('evade') && E.abT.evade<=0 && incoming && E.sys.eng.hp>0 && R()<dt*2){ E.evading=2.5; E.abT.evade=15+R()*5; float(E,'EVASIVE','#5ee3a4'); }
+  if(E.ai.includes('evade') && E.abT.evade<=0 && incoming && E.sys.eng.hp>0 && R()<dt*2){ E.evading=1.5; E.abT.evade=15+R()*5; float(E,'EVASIVE','#5ee3a4'); }
   if(E.ai.includes('surge') && E.abT.surge<=0 && E.shields===0 && incoming && layerCap(E)>0){ E.shields=layerCap(E)+1; E.over=true; E.shieldFlash=1; E.abT.surge=22; float(E,'SURGE','#79b8ff'); }
 }
 function fire(s,o,w){
   const tgt = s.player? C.target : (R()<.45?'wep':pick(['shd','eng','wep']));
   let dmg=w.dmg; if(s.player && w.type==='missile') dmg+=perk('magazine');
   for(let i=0;i<w.shots;i++){
-    C.proj.push({src:s,dst:o,type:w.type,dmg,sysDmg:w.sys||1,sys:tgt,t:-i*.16,dur:w.type==='missile'?1.15:w.type==='beam'?.25:.6,
+    C.proj.push({src:s,dst:o,type:w.type,dmg,sysDmg:w.sys||1,sys:tgt,t:-i*.16,dur:w.type==='missile'?1.4:w.type==='beam'?.25:.8,
       ox:(R()-.5)*.5, oy:(R()-.5)*.4, mx:(R()<.5?-1:1)*(40+R()*40)});
   }
 }
@@ -814,10 +960,10 @@ function resolveHit(p){
   if(p.type==='beam'){
     const dmg=Math.max(0,p.dmg-d.shields);
     C.beams.push({s,d,life:.45,color:s.player?'#9fe2ff':'#ffb38f'});
-    if(dmg<=0){ d.shieldFlash=1; float(d,'BLOCKED','#79b8ff'); return; }
+    if(dmg<=0){ d.shieldFlash=1; float(d,'BLOCKED','#79b8ff'); if(d.player) C.st.block++; return; }
     damage(d,dmg,p); return;
   }
-  if(R()<evasion(d,s)){ p.miss=true; float(d,'MISS','#8d98c6'); return; }
+  if(R()<evasion(d,s)){ p.miss=true; const dodge=d.evading>0; float(d,dodge?'DODGED':'MISS',dodge?'#5ee3a4':'#8d98c6'); if(d.player) C.st.dodge++; return; }
   if(p.type==='missile'){
     if(d.player && perk('pointdef') && R()<.25*perk('pointdef')){ p.dead=true; burst(d.x,d.y-d.r*1.2,'#ffd27a',12); float(d,'SHOT DOWN','#ffc65c'); return; }
     damage(d,p.dmg,p); return;
@@ -827,11 +973,11 @@ function resolveHit(p){
     d.sys[p.sys].ion=4.5; d.sys[p.sys].flash=1; float(d,`${SYS[p.sys]} OFFLINE`,'#a08bff'); burst(d.x,d.y,'#a08bff',14,110); return;
   }
   // laser
-  if(d.shields>0){ d.shields--; d.shieldFlash=1; float(d,'BLOCKED','#79b8ff'); burst(d.x+(R()-.5)*d.r,d.y+(s.player?1:-1)*d.r*1.1,'#79b8ff',6,80,.4); return; }
+  if(d.shields>0){ d.shields--; d.shieldFlash=1; float(d,'BLOCKED','#79b8ff'); if(d.player) C.st.block++; burst(d.x+(R()-.5)*d.r,d.y+(s.player?1:-1)*d.r*1.1,'#79b8ff',6,80,.4); return; }
   damage(d,p.dmg,p);
 }
 function damage(d,dmg,p){
-  d.hull=Math.max(0,d.hull-dmg); d.hitFlash=1;
+  d.hull=Math.max(0,d.hull-dmg); d.hitFlash=1; if(!d.player) C.st.hit++;
   const y=d.sys[p.sys]; y.hp=Math.max(0,y.hp-p.sysDmg); y.flash=1; y.rt=0;
   float(d,`-${dmg}`,'#ff4f6d');
   burst(d.x+(R()-.5)*d.r,d.y+(R()-.5)*d.r,'#ffb35c',16,140);
@@ -839,21 +985,27 @@ function damage(d,dmg,p){
   if(d.player) buzz(25);
 }
 function endCombat(){
-  const p=C.p, won=C.over==='win';
+  const p=C.p, won=C.over==='win', st=C.st;
   run.hull=Math.max(0,Math.ceil(C.P.hull));
   stopCombat();
   if(!won){ endRun(false); save(); render(); return; }
   if(p.boss){ endRun(true); save(); render(); return; }
   const loot=[];
-  const mult=(p.elite?1.6:p.gate?1.5:1)*(1+.3*perk('salvage'));
+  const mult=(p.elite?1.6:p.gate?1.5:1)*(1+.3*perk('salvage'))*(1+.15*traitCount('scav'));
   if(!p.boss){
     const scrap=Math.round((12+6*run.sector+ri(0,8))*mult); run.scrap+=scrap; loot.push([`+${scrap} scrap`,true]);
     if(R()<.5||run.fuel<3){ const f=ri(1,2); run.fuel+=f; loot.push([`+${f} fuel`,true]); }
     if(R()<.45){ const m=ri(1,3); run.missiles+=m; loot.push([`+${m} missiles`,true]); }
   }
-  if(perk('drones')){ const h=Math.min(run.hullMax-run.hull,3*perk('drones')); if(h>0){ run.hull+=h; loot.push([`+${h} hull (drones)`,true]); } }
+  if(perk('drones')||traitCount('medic')){ const h=Math.min(run.hullMax-run.hull,3*perk('drones')+3*traitCount('medic')); if(h>0){ run.hull+=h; loot.push([`+${h} hull repaired`,true]); } }
   const next=p.boss?'victory':p.gate?'gate':null;
-  run.pending={kind:'reward', loot, offers:makeOffers(p.elite||p.gate), next, boss:p.boss};
+  const act={wep:Math.min(3,Math.floor(st.hit/2)), shd:Math.min(3,Math.floor(st.block/2)), eng:Math.min(3,st.dodge), helm:Math.min(3,st.ab)};
+  const xm=(p.elite||p.gate)?1.5:1;
+  loot.push(['Crew gained XP',true]);
+  run.crew.forEach(c=>giveXP(c,(c.station?2+act[c.station]:1)*xm,loot));
+  const offers=makeOffers(p.elite||p.gate);
+  if(p.gate && run.crew.length<5 && !offers.some(o=>o.kind==='crew')){ const c=makeCrew(recruitLv()); offers[2]={kind:'crew',id:c.name,c}; }
+  run.pending={kind:'reward', loot, offers, next, boss:p.boss};
   save(); render();
 }
 
@@ -886,6 +1038,8 @@ function draw(){
   g.save();
   if(C.shake>0) g.translate((R()-.5)*C.shake,(R()-.5)*C.shake);
   drawShip(C.E,true); drawShip(C.P,false);
+  { const E=C.E, hot=Math.max(0,...E.weapons.map(w=>w.charge/w.cd));
+    if(!E.dead && !C.over && hot>.8 && sysF(E,'wep')>0){ const a=(hot-.8)/.2; g.fillStyle=`rgba(255,79,109,${.3+.5*a})`; g.shadowColor='#ff4f6d'; g.shadowBlur=20; g.beginPath(); g.arc(E.x,E.y+E.r*.95,4+9*a,0,7); g.fill(); g.shadowBlur=0; } }
   // beams
   for(const b of C.beams){ const a=b.life/.45; g.strokeStyle=b.color; g.globalAlpha=a; g.lineWidth=3+5*a; g.shadowColor=b.color; g.shadowBlur=14;
     g.beginPath(); g.moveTo(b.s.x,b.s.y+(b.s.player?-b.s.r:b.s.r)); g.lineTo(b.d.x,b.d.y); g.stroke(); g.shadowBlur=0; g.globalAlpha=1; }
@@ -971,8 +1125,12 @@ function syncDOM(){
     const sp2=sc.querySelector('.spips'), h2=spips(P.sys[k]); if(sp2.dataset.h!==h2){ sp2.innerHTML=h2; sp2.dataset.h=h2; }
   }
   P.weapons.forEach((w,i)=>{ const el=document.getElementById('w_'+i); el.firstChild.style.width=`${100*w.charge/w.cd}%`; el.classList.toggle('noammo',!!w.noAmmo); el.classList.toggle('ready',w.charge>=w.cd*.92); });
+  E.weapons.forEach((w,i)=>{ const el=document.getElementById('ew_'+i); if(!el) return; const r=w.charge/w.cd; el.firstChild.style.width=`${100*r}%`; el.classList.toggle('hot',r>.8&&sysF(E,'wep')>0&&!C.over); });
+  const inc=!C.over&&C.proj.some(p=>p.dst===P&&!p.done&&p.t>-.3&&p.type!=='beam');
+  if(inc && !meta.tipInc && C.ab.evade.t<=0){ meta.tipInc=1; save(); toast('Shots incoming! Tap Evade to dodge them, or Surge for extra shields.',3500); }
   for(const k in AB){
     const el=document.getElementById('a_'+k), a=C.ab[k];
+    el.classList.toggle('incoming',inc&&k!=='od');
     el.style.setProperty('--p',(a.t/AB[k].cd()).toFixed(3));
     el.classList.toggle('ready',a.t<=0);
     el.classList.toggle('active',(k==='evade'&&P.evading>0)||(k==='od'&&P.od>0));
@@ -985,6 +1143,7 @@ function syncDOM(){
 /* ---------- boot ---------- */
 load();
 if(run && !run.pending && run.map===undefined) run=null;
+if(run && !run.crew){ run.crew=[]; addCrew(makeCrew(1)); addCrew(makeCrew(1)); save(); }
 render();
 </script>
 </body>
